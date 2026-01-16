@@ -332,13 +332,25 @@ def delete_expense(expense_id: int):
     conn.close()
 
 def calculate_balance():
+    """
+    Calculate the balance between Talor and Romi.
+    Returns positive if Romi owes Talor, negative if Talor owes Romi.
+    
+    Logic: When Talor pays for shared expenses, Romi owes her share to Talor.
+           When Romi pays for shared expenses, Talor owes his share to Romi.
+    """
     expenses = get_all_expenses() # Only gets is_deleted=0
     talor_owes = 0
     romi_owes = 0
     for expense in expenses:
-        if expense['payer'] == 'טלאור': romi_owes += expense['romi_share']
-        else: talor_owes += expense['talor_share']
-    return talor_owes - romi_owes
+        if expense['payer'] == 'טלאור': 
+            # Talor paid - Romi owes her share
+            romi_owes += expense['romi_share']
+        else: 
+            # Romi paid - Talor owes his share
+            talor_owes += expense['talor_share']
+    # Positive = Romi owes Talor, Negative = Talor owes Romi
+    return romi_owes - talor_owes
 
 
 # ============== EVENTS FUNCTIONS ==============

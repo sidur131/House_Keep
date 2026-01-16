@@ -6,18 +6,19 @@ A mobile-first app for Talor and Romi to manage their shared household.
 import streamlit as st
 from datetime import datetime, timedelta
 import database as db
+import streamlit.components.v1 as components
 
-# Initialize database
-db.init_database()
-db.auto_cleanup_old_items()
-
-# Page config
+# Page config MUST be the first Streamlit command
 st.set_page_config(
     page_title="🏠 ניהול משק בית",
     page_icon="🏠",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
+
+# Initialize database
+db.init_database()
+db.auto_cleanup_old_items()
 
 # --- CSS VARIABLES (Safe handling to avoid SyntaxErrors) ---
 APP_STYLE = """
@@ -117,6 +118,110 @@ APP_STYLE = """
         
         .row-widget.stButton { margin: 0 !important; }
         .stRadio label { direction: rtl; text-align: right; }
+
+        /* ===== NUCLEAR OPTION: Hide Header, Resurrect Button ===== */
+        
+        /* 1. Hide the standard Streamlit Header Container entirely */
+        header[data-testid="stHeader"] {
+            background-color: transparent !important;
+            border-bottom: none !important;
+            visibility: hidden !important; /* Hides everything including decorations */
+        }
+
+        /* 2. Bring back ONLY the Sidebar Toggle Button */
+        [data-testid="stSidebarCollapsedControl"] {
+            visibility: visible !important; /* Override parent hiding */
+            display: block !important;
+            
+            /* Position it cleanly */
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            left: auto !important;
+            z-index: 999999 !important; /* Top of the world */
+            
+            /* Button Styling */
+            background-color: white !important;
+            width: 50px !important;
+            height: 50px !important;
+            border-radius: 50% !important; /* Perfect Circle */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important;
+            border: 1px solid #f0f0f0 !important;
+            
+            /* Flex to center the icon */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.3s ease !important;
+        }
+
+        /* Hover Effect */
+        [data-testid="stSidebarCollapsedControl"]:hover {
+            transform: scale(1.05) !important;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2) !important;
+        }
+
+        /* 3. Hide the default chevron icon inside the button */
+        [data-testid="stSidebarCollapsedControl"] svg, 
+        [data-testid="stSidebarCollapsedControl"] img {
+            display: none !important;
+        }
+
+        /* 4. Inject the Clean Hamburger Icon */
+        [data-testid="stSidebarCollapsedControl"]::after {
+            content: "☰" !important;
+            font-size: 24px !important;
+            color: #333 !important;
+            font-weight: bold !important;
+            margin-top: -2px !important;
+        }
+
+        /* 5. Ensure the Sidebar content itself (when open) is RTL */
+        section[data-testid="stSidebar"] > div {
+            direction: rtl;
+        }
+
+        /* ===== Sidebar Panel Styling ===== */
+        [data-testid="stSidebar"] {
+            right: 0 !important;
+            left: auto !important;
+            border-left: 1px solid #ddd !important;
+            border-right: none !important;
+            background: #fafafa !important;
+        }
+
+        /* Sidebar close button (X icon) */
+        [data-testid="stSidebar"] button[kind="header"] {
+            position: absolute !important;
+            left: 10px !important;
+            right: auto !important;
+            top: 10px !important;
+            background: white !important;
+            border: 1px solid #eee !important;
+            color: transparent !important;
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 50% !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+        }
+
+        [data-testid="stSidebar"] button[kind="header"] svg {
+            display: none !important;
+        }
+
+        [data-testid="stSidebar"] button[kind="header"]::before {
+            content: "✕" !important;
+            font-size: 18px !important;
+            color: #666 !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+        }
+
+        [data-testid="stSidebar"] button[kind="header"]:hover::before {
+            color: #e74c3c !important;
+        }
     </style>
 """
 
@@ -124,54 +229,214 @@ APP_STYLE = """
 st.markdown(APP_STYLE, unsafe_allow_html=True)
 
 
-def login_screen():
-    """Displays the Login Form."""
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center;'>🔐 התחברות למערכת</h2>", unsafe_allow_html=True)
+def set_auth_cookie():
+    """Set authentication cookie via JavaScript (30 days)."""
+    js_code = """
+    <script>
+        document.cookie = "household_auth=authenticated; max-age=2592000; path=/; SameSite=Lax";
+    </script>
+    """
+    components.html(js_code, height=0)
+
+def check_auth_cookie():
+    """Check for authentication cookie via query params workaround."""
+    # Since we can't read cookies directly in Streamlit, we use localStorage + query params
+    pass  # We'll handle this differently
+
+# PIN Pad CSS Styles
+PIN_PAD_STYLE = """
+<style>
+    .pin-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 30px;
+        margin-top: 20px;
+    }
+    .pin-title {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #333;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    .pin-subtitle {
+        font-size: 1rem;
+        color: #888;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .pin-dots {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 40px;
+        direction: ltr;
+    }
+    .pin-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid #667eea;
+        background: transparent;
+        transition: all 0.2s ease;
+    }
+    .pin-dot.filled {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #764ba2;
+    }
+    .pin-error {
+        color: #e74c3c;
+        font-size: 0.9rem;
+        margin-top: -20px;
+        margin-bottom: 20px;
+        animation: shake 0.5s ease;
+    }
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+    }
     
-    col1, col2, col3 = st.columns([1,2,1])
+    /* FORCE horizontal columns on mobile for PIN pad */
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+        direction: ltr !important;
+    }
+    
+    /* PIN pad button styling */
+    div[data-testid="stHorizontalBlock"] [data-testid="column"] {
+        width: 33.33% !important;
+        flex: 1 1 33.33% !important;
+        min-width: 0 !important;
+        padding: 5px !important;
+    }
+    
+    /* iPhone-style circular buttons */
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
+        height: 70px !important;
+        border-radius: 50% !important;
+        font-size: 28px !important;
+        font-weight: 300 !important;
+        background-color: #f0f0f0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #333 !important;
+        padding: 0 !important;
+    }
+    
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"]:hover {
+        background-color: #e0e0e0 !important;
+    }
+    
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"]:active {
+        background-color: #d0d0d0 !important;
+    }
+</style>
+"""
+
+def login_screen():
+    """Simple PIN Login Screen."""
+    
+    # Custom styling for login
+    st.markdown("""
+    <style>
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .login-title {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .login-subtitle {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        /* Style the password input */
+        .stTextInput > div > div > input {
+            text-align: center !important;
+            font-size: 24px !important;
+            letter-spacing: 8px !important;
+            padding: 15px !important;
+            border-radius: 12px !important;
+        }
+    </style>
+    <div class="login-container">
+        <div class="login-title">🔐 הכנס קוד</div>
+        <div class="login-subtitle">הקש את קוד הגישה בן 6 הספרות</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    CORRECT_PIN = "151215"
+    
+    # Password input
+    pin_input = st.text_input(
+        "קוד גישה",
+        type="password",
+        max_chars=6,
+        placeholder="••••••",
+        label_visibility="collapsed"
+    )
+    
+    # Center the button
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        with st.form("login_form"):
-            st.markdown("### הכנס פרטים")
-            email = st.text_input("אימייל", placeholder="user@example.com")
-            password = st.text_input("סיסמה", type="password", placeholder="********")
-            st.markdown("<br>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("התחבר למערכת", use_container_width=True, type="primary")
-            
-            if submitted:
-                # Validation Logic
-                if email.lower() == "talor012@gmail.com" and password == "talorromy35":
-                    st.session_state['authenticated'] = True
-                    st.session_state['current_user'] = "טלאור" 
-                    st.toast("התחברת בהצלחה! 🔓", icon="✅")
-                    st.rerun()
-                else:
-                    st.error("❌ שם משתמש או סיסמה שגויים")
+        if st.button("🔓 כניסה", use_container_width=True, type="primary"):
+            if pin_input == CORRECT_PIN:
+                st.session_state['authenticated'] = True
+                st.session_state['set_cookie'] = True
+                st.toast("התחברת בהצלחה! 🔓", icon="✅")
+                st.rerun()
+            else:
+                st.error("❌ קוד שגוי, נסה שוב")
+
+
+def handle_pin_press(digit: str, correct_pin: str):
+    """Handle PIN digit press with auto-submit on 6 digits."""
+    st.session_state.pin_error = False
+    
+    if len(st.session_state.pin_input) < 6:
+        st.session_state.pin_input += digit
+        
+        # Check if PIN is complete (6 digits)
+        if len(st.session_state.pin_input) == 6:
+            if st.session_state.pin_input == correct_pin:
+                # Correct PIN - Login success!
+                st.session_state['authenticated'] = True
+                st.session_state['set_cookie'] = True  # Flag to set cookie
+                st.session_state.pin_input = ""
+                st.toast("התחברת בהצלחה! 🔓", icon="✅")
+            else:
+                # Wrong PIN
+                st.session_state.pin_error = True
+                st.session_state.pin_input = ""
+        
+        st.rerun()
+
 
 def main_app():
     """The Main Application Logic."""
-    # Initialize session state for user-specific settings
-    if 'current_user' not in st.session_state:
-        st.session_state.current_user = 'טלאור'
-
+    # Initialize session state
     if 'delete_confirm' not in st.session_state:
         st.session_state.delete_confirm = {}
 
-    # --- USER SELECTION BUTTONS ---
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        is_active = st.session_state.current_user == "טלאור"
-        if st.button("👨 טלאור", use_container_width=True, type="primary" if is_active else "secondary"):
-            st.session_state.current_user = "טלאור"
+    # --- EDIT MODE TOGGLE (Top Right Button) ---
+    edit_col1, edit_col2 = st.columns([0.85, 0.15])
+    with edit_col2:
+        edit_mode = st.session_state.get('edit_mode', False)
+        if st.button("✏️ עריכה" if not edit_mode else "✅ סיום", key="edit_mode_toggle", use_container_width=True):
+            st.session_state['edit_mode'] = not edit_mode
             st.rerun()
-
-    with col2:
-        is_active = st.session_state.current_user == "רומי"
-        if st.button("👩 רומי", use_container_width=True, type="primary" if is_active else "secondary"):
-            st.session_state.current_user = "רומי"
-            st.rerun()
-
-    st.caption(f"משתמש פעיל: {st.session_state.current_user}")
+    
+    if st.session_state.get('edit_mode', False):
+        st.info("מצב עריכה פעיל - ניתן למחוק ולערוך פריטים")
 
     # --- GLOBAL ALERTS ---
     overdue_cat_tasks = db.get_overdue_cat_tasks()
@@ -265,34 +530,33 @@ def main_app():
     if st.session_state.active_tab == TAB_EXPENSES:
         st.header("הוצאות")
         
-        # Calculate Balance
+        # Calculate Balance - Absolute display
         raw_balance = db.calculate_balance()
-        current_user = st.session_state.current_user
+        # raw_balance > 0 means Talor paid more (Romi owes Talor)
+        # raw_balance < 0 means Romi paid more (Talor owes Romi)
         
-        user_balance = -raw_balance if current_user == "טלאור" else raw_balance
-
         # Determine Status
-        card_type = "neutral"
-        status_title = "הכל מאוזן"
-        amount_display = "✅"
+        status_title = "הכל מאוזן ✅"
+        amount_display = "₪0"
+        card_bg = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
         
-        if abs(user_balance) >= 0.01:
-            if user_balance > 0:
-                card_type = "green"
-                other_person = "רומי" if current_user == "טלאור" else "טלאור"
-                status_title = f"{other_person} חייב/ת לך"
-                amount_display = f"₪{user_balance:.2f}"
+        if abs(raw_balance) >= 0.01:
+            if raw_balance > 0:
+                # Talor paid more - Romi owes Talor
+                status_title = "רומי חייבת לטלאור"
+                amount_display = f"₪{raw_balance:.2f}"
+                card_bg = "linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)"
             else:
-                card_type = "red"
-                other_person = "רומי" if current_user == "טלאור" else "טלאור"
-                status_title = f"את/ה חייב/ת ל{other_person}"
-                amount_display = f"₪{abs(user_balance):.2f}"
+                # Romi paid more - Talor owes Romi
+                status_title = "טלאור חייב לרומי"
+                amount_display = f"₪{abs(raw_balance):.2f}"
+                card_bg = "linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)"
 
         # Render Balance Card
         balance_html = f"""
-            <div class="balance-card {card_type}">
-                <div class="balance-title">{status_title}</div>
-                <div class="balance-amount">{amount_display}</div>
+            <div style="background: {card_bg}; color: white; padding: 30px; border-radius: 25px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.2); margin-bottom: 30px; position: relative; overflow: hidden;">
+                <div style="font-size: 1.2rem; opacity: 0.9;">{status_title}</div>
+                <div style="font-size: 3.5rem; font-weight: 900;">{amount_display}</div>
             </div>
         """
         st.markdown(balance_html, unsafe_allow_html=True)
@@ -303,7 +567,7 @@ def main_app():
             with col2: description = st.text_input("תיאור")
             
             col3, col4 = st.columns(2)
-            with col3: payer = st.radio("מי שילם?", ["טלאור", "רומי"], horizontal=True, index=0 if st.session_state.current_user == "טלאור" else 1)
+            with col3: payer = st.radio("מי שילם?", ["טלאור", "רומי"], horizontal=True, index=0)
             with col4: split = st.radio("חלוקה", ["שווה בשווה", "מלא עליי", "מלא עליו/ה"], horizontal=True)
             
             if st.button("שמור הוצאה", type="primary", use_container_width=True):
@@ -335,35 +599,36 @@ def main_app():
         expenses = db.get_all_expenses()
         if expenses:
             for ex in expenses:
-                is_my_expense = (ex['payer'] == st.session_state.current_user)
-                color = "#2ecc71" if is_my_expense else "#ff4b4b" 
-                
                 created_dt = datetime.fromisoformat(ex['created_at'])
                 date_str = created_dt.strftime("%d/%m/%Y")
+                time_str = created_dt.strftime("%H:%M")
                 
-                with st.container():
+                # Build the HTML card
+                html_card = f"""
+                <div class="custom-card border-blue" style="padding: 15px;">
+                    <div class="card-price" style="color: #3498db; float: left;">₪{float(ex['amount']):.0f}</div>
+                    <div class="card-title" style="margin-right: 0;">{ex['description']}</div>
+                    <div class="card-sub">{date_str} • {time_str} • שולם ע"י {ex['payer']}</div>
+                    <div style="clear: both;"></div>
+                </div>
+                """
+                
+                if st.session_state.get('edit_mode', False):
+                    # EDIT MODE ON: Show Card + Delete Button
                     col1, col2 = st.columns([0.85, 0.15])
-                    
                     with col1:
-                        # Construct HTML separately to be safe
-                        html_card = f"""
-                        <div class="custom-card" style="border-right: 5px solid {color}; padding: 15px;">
-                            <div class="card-price" style="color: {color}; float: left;">₪{float(ex['amount']):.0f}</div>
-                            <div class="card-title" style="margin-right: 0;">{ex['description']}</div>
-                            <div class="card-sub">{date_str} • שולם ע"י {ex['payer']}</div>
-                            <div style="clear: both;"></div>
-                        </div>
-                        """
                         st.markdown(html_card, unsafe_allow_html=True)
-                    
                     with col2:
                         st.write("")
                         st.write("")
-                        with st.popover("⋮", use_container_width=True):
+                        with st.popover("🗑️", use_container_width=True):
                             st.write("למחוק?")
                             if st.button("מחק", key=f"del_ex_{ex['id']}", type="primary"):
                                 db.delete_expense(ex['id'])
                                 st.rerun()
+                else:
+                    # EDIT MODE OFF: Show Card ONLY (No columns needed)
+                    st.markdown(html_card, unsafe_allow_html=True)
 
     # ================== SHOPPING LIST TAB ==================
     elif st.session_state.active_tab == TAB_SHOPPING:
@@ -398,26 +663,28 @@ def main_app():
                 for category, cat_items in categories.items():
                     st.markdown(f"##### {category}")
                     for item in cat_items:
-                        col1, col2 = st.columns([0.85, 0.15])
-                        with col1:
-                            html_card = f"""
-                            <div class="custom-card border-green" style="padding: 15px; margin-bottom: 5px;">
-                                <div class="card-title" style="font-size: 16px;">{item['name']} 
-                                    <span style="color:#2ecc71; font-weight:400;">({item['quantity']})</span>
+                        if st.session_state.get('edit_mode'):
+                            # Edit mode: show card + delete button
+                            col1, col2 = st.columns([0.85, 0.15])
+                            with col1:
+                                html_card = f"""
+                                <div class="custom-card border-green" style="padding: 15px; margin-bottom: 5px;">
+                                    <div class="card-title" style="font-size: 16px;">{item['name']} 
+                                        <span style="color:#2ecc71; font-weight:400;">({item['quantity']})</span>
+                                    </div>
                                 </div>
-                            </div>
-                            """
-                            st.markdown(html_card, unsafe_allow_html=True)
-                            
-                        with col2:
-                            if st.button("✅", key=f"buy_{item['id']}", help="סמן כנקנה"):
-                                 db.update_shopping_item(item['id'], bought=True)
-                                 st.rerun()
-                            
-                            with st.popover("⋮"):
-                                if st.button("מחק", key=f"del_shop_{item['id']}", type="primary"):
-                                    db.delete_shopping_item(item['id'])
-                                    st.rerun()
+                                """
+                                st.markdown(html_card, unsafe_allow_html=True)
+                            with col2:
+                                with st.popover("🗑️"):
+                                    if st.button("מחק", key=f"del_shop_{item['id']}", type="primary"):
+                                        db.delete_shopping_item(item['id'])
+                                        st.rerun()
+                        else:
+                            # Normal mode: clicking the item marks it as bought
+                            if st.button(f"🛒 {item['name']} ({item['quantity']})", key=f"buy_{item['id']}", use_container_width=True):
+                                db.update_shopping_item(item['id'], bought=True)
+                                st.rerun()
                         st.write("") 
             else:
                  if not bought: st.info("אין פריטים לקנייה כרגע")
@@ -476,30 +743,33 @@ def main_app():
                     if chore['priority']:
                         if "🔴" in chore['priority']: accent_class = "border-orange"
                     
-                    col1, col2, col3 = st.columns([0.65, 0.2, 0.15])
-                    with col1:
-                        html_card = f"""
-                            <div class="custom-card {accent_class}">
-                                <div class="card-title">{chore['name']}</div>
-                                <div class="card-sub">📅 {chore['due_date'] or 'ללא תאריך'} • {chore['priority'] or 'רגיל'}</div>
-                            </div>
-                        """
-                        st.markdown(html_card, unsafe_allow_html=True)
-
-                    with col2:
-                        st.write("")
-                        st.write("")
-                        if st.button("✅", key=f"do_chore_{chore['id']}", use_container_width=True):
-                            db.mark_chore_done(chore['id'], st.session_state.current_user)
+                    priority_emoji = "🔴" if chore['priority'] and "🔴" in chore['priority'] else "🔵"
+                    due_text = chore['due_date'] or 'ללא תאריך'
+                    
+                    if st.session_state.get('edit_mode'):
+                        # Edit mode: show card + delete button
+                        col1, col2 = st.columns([0.85, 0.15])
+                        with col1:
+                            html_card = f"""
+                                <div class="custom-card {accent_class}">
+                                    <div class="card-title">{chore['name']}</div>
+                                    <div class="card-sub">📅 {due_text} • {priority_emoji}</div>
+                                </div>
+                            """
+                            st.markdown(html_card, unsafe_allow_html=True)
+                        with col2:
+                            st.write("")
+                            st.write("")
+                            with st.popover("🗑️", use_container_width=True):
+                                st.write("למחוק?")
+                                if st.button("מחק", key=f"del_chore_{chore['id']}", type="primary"):
+                                    db.delete_chore(chore['id'])
+                                    st.rerun()
+                    else:
+                        # Normal mode: clicking the task marks it as done
+                        if st.button(f"{priority_emoji} {chore['name']} (📅 {due_text})", key=f"do_chore_{chore['id']}", use_container_width=True):
+                            db.mark_chore_done(chore['id'], "מישהו")
                             st.rerun()
-                    with col3:
-                        st.write("")
-                        st.write("")
-                        with st.popover("⋮", use_container_width=True):
-                            st.write("למחוק?")
-                            if st.button("מחק", key=f"del_chore_{chore['id']}", type="primary"):
-                                db.delete_chore(chore['id'])
-                                st.rerun()
                     st.write("")
 
         if done_chores:
@@ -567,48 +837,58 @@ def main_app():
         st.subheader(f"אירועים קרובים ({len(upcoming_events)})")
         if upcoming_events:
             for ev in upcoming_events:
-                with st.container():
+                # Build the HTML card
+                meta_parts = [f"📅 {ev['date']}"]
+                if ev['time']: meta_parts.append(f"⏰ {ev['time']}")
+                
+                html_card = f"""
+                    <div class="custom-card border-green">
+                        <div class="card-title">{ev['title']}</div>
+                        <div class="card-sub">{' • '.join(meta_parts)}</div>
+                        <div class="card-sub" style="font-size: 13px;">{ev['description'] or ''}</div>
+                    </div>
+                """
+                
+                if st.session_state.get('edit_mode', False):
+                    # EDIT MODE ON: Show Card + Delete Button
                     col1, col2 = st.columns([0.8, 0.2])
                     with col1:
-                        meta_parts = [f"📅 {ev['date']}"]
-                        if ev['time']: meta_parts.append(f"⏰ {ev['time']}")
-                        
-                        html_card = f"""
-                            <div class="custom-card border-green">
-                                <div class="card-title">{ev['title']}</div>
-                                <div class="card-sub">{' • '.join(meta_parts)}</div>
-                                <div class="card-sub" style="font-size: 13px;">{ev['description'] or ''}</div>
-                            </div>
-                        """
                         st.markdown(html_card, unsafe_allow_html=True)
-                        
                     with col2:
                         st.write("") 
                         st.write("") 
-                        with st.popover("⋮", use_container_width=True):
+                        with st.popover("🗑️", use_container_width=True):
                             st.write("למחוק?")
                             if st.button("מחק", key=f"del_ev_up_{ev['id']}", type="primary"):
                                 db.delete_event(ev['id'])
                                 st.rerun()
-                    st.write("")
+                else:
+                    # EDIT MODE OFF: Show Card ONLY
+                    st.markdown(html_card, unsafe_allow_html=True)
+                st.write("")
         else:
             st.info("אין אירועים קרובים. זמן לנוח! 🏖️")
 
         if past_events:
             st.subheader("אירועים שזמנם עבר")
             for ev in past_events:
-                with st.container():
+                if st.session_state.get('edit_mode', False):
+                    # EDIT MODE ON: Show content + Delete Button
                     col1, col2 = st.columns([0.85, 0.15])
                     with col1:
                         st.markdown(f"<s style='color: #888;'>{ev['title']}</s>", unsafe_allow_html=True)
                         st.caption(f"{ev['date']} • {ev['time'] or ''}")
                     with col2:
-                        with st.popover("⋮", use_container_width=True):
+                        with st.popover("🗑️", use_container_width=True):
                             st.write("למחוק את ההיסטוריה?")
                             if st.button("מחק", key=f"del_ev_past_{ev['id']}", type="primary"):
                                 db.delete_event(ev['id'])
                                 st.rerun()
-                    st.divider()
+                else:
+                    # EDIT MODE OFF: Show content ONLY
+                    st.markdown(f"<s style='color: #888;'>{ev['title']}</s>", unsafe_allow_html=True)
+                    st.caption(f"{ev['date']} • {ev['time'] or ''}")
+                st.divider()
 
     # ================== CAT CARE TAB ==================
     elif st.session_state.active_tab == TAB_CAT:
@@ -693,48 +973,66 @@ def main_app():
                 """
                 st.markdown(html_card, unsafe_allow_html=True)
                 
-                c1, c2, c3 = st.columns([0.15, 0.15, 0.7])
-                with c1:
-                    with st.popover("🗑️"):
-                        st.write("למחוק?")
-                        if st.button("כן", key=f"del_cat_{task['id']}", type="primary"):
-                            db.delete_cat_task(task['id'])
+                # Show edit/delete only in edit mode
+                if st.session_state.get('edit_mode'):
+                    c1, c2, c3 = st.columns([0.15, 0.15, 0.7])
+                    with c1:
+                        with st.popover("🗑️"):
+                            st.write("למחוק?")
+                            if st.button("כן", key=f"del_cat_{task['id']}", type="primary"):
+                                db.delete_cat_task(task['id'])
+                                st.rerun()
+                    with c2:
+                        if st.button("✏️", key=f"ed_cat_{task['id']}"):
+                            st.session_state.edit_cat_id = task['id']
                             st.rerun()
-                with c2:
-                    if st.button("✏️", key=f"ed_cat_{task['id']}"):
-                        st.session_state.edit_cat_id = task['id']
-                        st.rerun()
-                with c3:
+                    with c3:
+                        if st.button("בוצע ✅", key=f"do_cat_{task['id']}", use_container_width=True):
+                            db.update_cat_task(task['id'], "מישהו")
+                            st.rerun()
+                else:
+                    # Clean view - only show "Done" button
                     if st.button("בוצע ✅", key=f"do_cat_{task['id']}", use_container_width=True):
-                        db.update_cat_task(task['id'], st.session_state.current_user)
+                        db.update_cat_task(task['id'], "מישהו")
                         st.rerun()
 
     st.divider()
 
-    # ================== RECYCLE BIN ==================
-    with st.expander("🗑️ סל מחזור (פריטים שנמחקו)", expanded=False):
-        deleted_items = db.get_deleted_items()
-        if not deleted_items:
-            st.info("סל המחזור ריק")
-        else:
-            st.write("ניתן לשחזר פריטים שנמחקו בטעות:")
-            for item in deleted_items:
-                c1, c2, c3 = st.columns([0.6, 0.2, 0.2])
-                with c1:
-                    st.write(f"**{item['name']}** ({item['type_name']})")
-                with c2:
-                    if st.button("♻️ שחזר", key=f"rest_{item['table_name']}_{item['id']}"):
-                        db.restore_item(item['table_name'], item['id'])
-                        st.rerun()
-                with c3:
-                     if st.button("❌", key=f"perm_{item['table_name']}_{item['id']}", help="מחיקה לצמיתות"):
-                        db.permanently_delete_item(item['table_name'], item['id'])
-                        st.rerun()
-                st.divider()
+    # ================== RECYCLE BIN (Only in Edit Mode) ==================
+    if st.session_state.get('edit_mode'):
+        with st.expander("🗑️ סל מחזור (פריטים שנמחקו)", expanded=False):
+            deleted_items = db.get_deleted_items()
+            if not deleted_items:
+                st.info("סל המחזור ריק")
+            else:
+                st.write("ניתן לשחזר פריטים שנמחקו בטעות:")
+                for item in deleted_items:
+                    c1, c2, c3 = st.columns([0.6, 0.2, 0.2])
+                    with c1:
+                        st.write(f"**{item['name']}** ({item['type_name']})")
+                    with c2:
+                        if st.button("♻️ שחזר", key=f"rest_{item['table_name']}_{item['id']}"):
+                            db.restore_item(item['table_name'], item['id'])
+                            st.rerun()
+                    with c3:
+                         if st.button("❌", key=f"perm_{item['table_name']}_{item['id']}", help="מחיקה לצמיתות"):
+                            db.permanently_delete_item(item['table_name'], item['id'])
+                            st.rerun()
+                    st.divider()
 
 # --- MAIN EXECUTION FLOW ---
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
+
+# Check query params for auth token (set by JavaScript on page load)
+query_params = st.query_params
+if "auth" in query_params and query_params["auth"] == "ok":
+    st.session_state["authenticated"] = True
+
+# Set cookie if just logged in
+if st.session_state.get('set_cookie', False):
+    set_auth_cookie()
+    st.session_state['set_cookie'] = False
 
 if st.session_state["authenticated"]:
     main_app()
