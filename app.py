@@ -118,6 +118,67 @@ APP_STYLE = """
         
         .row-widget.stButton { margin: 0 !important; }
         .stRadio label { direction: rtl; text-align: right; }
+        
+        /* ===== HORIZONTAL SCROLLABLE PILL TABS ===== */
+        
+        /* 1. Make the container scrollable horizontally (Mobile Friendly) */
+        [data-testid="stRadio"] > div[role="radiogroup"] {
+            display: flex;
+            justify-content: flex-start;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 10px;
+            gap: 10px;
+            scrollbar-width: none;
+        }
+
+        /* 2. Style the Labels as "Pills" */
+        [data-testid="stRadio"] label {
+            background-color: white !important;
+            padding: 12px 20px !important;
+            border-radius: 25px !important;
+            border: 2px solid #e0e0e0 !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+            margin-right: 0 !important;
+            transition: all 0.2s ease;
+            min-width: fit-content;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+        }
+
+        /* 3. Hide the ugly Radio Circles */
+        [data-testid="stRadio"] label > div:first-child {
+            display: none !important;
+        }
+
+        /* 4. Hover Effect */
+        [data-testid="stRadio"] label:hover {
+            border-color: #667eea !important;
+            color: #667eea !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2) !important;
+        }
+
+        /* 5. Active/Selected Tab */
+        [data-testid="stRadio"] label[data-checked="true"],
+        [data-testid="stRadio"] label:has(input:checked) {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border-color: transparent !important;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+        }
+
+        /* 6. Hide scrollbar for clean look */
+        [data-testid="stRadio"] > div[role="radiogroup"]::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
 
         /* ===== NUCLEAR OPTION: Hide Header, Resurrect Button ===== */
         
