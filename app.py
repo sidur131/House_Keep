@@ -426,6 +426,22 @@ def main_app():
     # Initialize session state
     if 'delete_confirm' not in st.session_state:
         st.session_state.delete_confirm = {}
+    
+    # --- APP HEADER WITH STYLED LOGO ---
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    ">
+        <div style="font-size: 50px; margin-bottom: 5px;">🏠</div>
+        <div style="color: white; font-size: 1.5rem; font-weight: 900;">משק הבית שלנו</div>
+        <div style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">טלאור ורומי ❤️</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # --- EDIT MODE TOGGLE (Top Right Button) ---
     edit_col1, edit_col2 = st.columns([0.85, 0.15])
