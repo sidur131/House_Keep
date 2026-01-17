@@ -590,6 +590,73 @@ def main_app():
     </div>
     """, unsafe_allow_html=True)
 
+    # --- GLOBAL NOTIFICATIONS (Show on all pages) ---
+    now = datetime.now()
+    today_str = now.date().isoformat()
+    current_time_str = now.strftime("%H:%M")
+    
+    # Collect all alerts
+    alerts = []
+    
+    # 1. Events Today
+    all_events = db.get_all_events()
+    for ev in all_events:
+        try:
+            if ev['date'] == today_str:
+                if not ev['time'] or ev['time'] > current_time_str:
+                    time_part = f" ב-{ev['time']}" if ev['time'] else ""
+                    alerts.append(("📅", f"אירוע היום: {ev['title']}{time_part}", "event"))
+        except: pass
+    
+    # 2. Chores Due Today
+    all_chores = db.get_all_chores()
+    for ch in all_chores:
+        try:
+            if not ch['done'] and ch['due_date'] == today_str:
+                alerts.append(("✅", f"משימה להיום: {ch['name']}", "chore"))
+        except: pass
+    
+    # 3. Overdue Cat Tasks
+    for task in overdue_cat_tasks:
+        alerts.append(("🐱", f"{task['task_name']} דורש טיפול!", "cat"))
+    
+    # Show notifications as styled banner
+    if alerts:
+        notification_items = ""
+        for emoji, text, alert_type in alerts:
+            color = "#667eea" if alert_type == "event" else "#2ecc71" if alert_type == "chore" else "#f39c12"
+            notification_items += f'<div style="padding: 8px 12px; margin: 5px 0; background: {color}; border-radius: 10px; color: white; font-size: 14px;">{emoji} {text}</div>'
+        
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        ">
+            <div style="font-weight: 700; color: #667eea; margin-bottom: 10px; font-size: 16px;">
+                🔔 התראות ({len(alerts)})
+            </div>
+            {notification_items}
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # No alerts - show a small "all clear" message
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(39, 174, 96, 0.1) 100%);
+            border-radius: 10px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #27ae60;
+            font-size: 14px;
+        ">
+            ✅ אין התראות - הכל מסודר!
+        </div>
+        """, unsafe_allow_html=True)
+
     # --- MODAL DIALOG FOR ADDING ITEMS ---
     @st.dialog("➕ הוסף חדש")
     def add_item_dialog():
