@@ -1,4 +1,4 @@
-﻿"""
+"""
 Household Management App - אפליקציית ניהול משק בית
 A mobile-first app for Talor and Romi to manage their shared household.
 """
@@ -118,6 +118,60 @@ APP_STYLE = """
         
         .row-widget.stButton { margin: 0 !important; }
         .stRadio label { direction: rtl; text-align: right; }
+        
+        /* ===== LOGO BUTTON STYLING ===== */
+        /* Style the popover trigger as the logo card */
+        [data-testid="stPopover"] > div:first-child > button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            padding: 25px !important;
+            border-radius: 20px !important;
+            border: none !important;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3) !important;
+            width: 100% !important;
+            min-height: 120px !important;
+            transition: all 0.3s ease !important;
+        }
+        [data-testid="stPopover"] > div:first-child > button:hover {
+            transform: translateY(-3px) !important;
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4) !important;
+        }
+        [data-testid="stPopover"] > div:first-child > button p {
+            color: white !important;
+            font-size: 1.5rem !important;
+            font-weight: 900 !important;
+            margin: 0 !important;
+        }
+        
+        /* ===== FLOATING ACTION BUTTON (FAB) ===== */
+        .fab-container {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            z-index: 9999;
+        }
+        .fab-container button {
+            border-radius: 50% !important;
+            width: 65px !important;
+            height: 65px !important;
+            font-size: 28px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s ease !important;
+        }
+        .fab-container button:hover {
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4) !important;
+        }
+        .fab-container button p {
+            font-size: 28px !important;
+            margin: 0 !important;
+        }
         
         /* ===== HORIZONTAL SCROLLABLE PILL TABS ===== */
         
@@ -488,86 +542,11 @@ def main_app():
     if 'delete_confirm' not in st.session_state:
         st.session_state.delete_confirm = {}
     
-    # --- APP HEADER WITH STYLED LOGO ---
-    st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 20px;
-        border-radius: 20px;
-        text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-    ">
-        <div style="font-size: 50px; margin-bottom: 5px;">🏠</div>
-        <div style="color: white; font-size: 1.5rem; font-weight: 900;">משק הבית שלנו</div>
-        <div style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">טלאור ורומי ❤️</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --- EDIT MODE TOGGLE (Top Right Button) ---
-    edit_col1, edit_col2 = st.columns([0.85, 0.15])
-    with edit_col2:
-        edit_mode = st.session_state.get('edit_mode', False)
-        if st.button("✏️ עריכה" if not edit_mode else "✅ סיום", key="edit_mode_toggle", use_container_width=True):
-            st.session_state['edit_mode'] = not edit_mode
-            st.rerun()
-    
-    if st.session_state.get('edit_mode', False):
-        st.info("מצב עריכה פעיל - ניתן למחוק ולערוך פריטים")
-
-    # --- GLOBAL ALERTS ---
+    # Get counts for navigation badges
     overdue_cat_tasks = db.get_overdue_cat_tasks()
-    if overdue_cat_tasks:
-        for task in overdue_cat_tasks:
-            st.markdown(f"""<div class="notification-banner">🔔 {task['task_name']} דורש טיפול!</div>""", unsafe_allow_html=True)
-
-    st.divider()
-
-    # --- GLOBAL DAILY ALERTS (EVENTS & CHORES) ---
-    today_alerts = []
-    now = datetime.now()
-    today_str = now.date().isoformat()
-    current_time_str = now.strftime("%H:%M")
-
-    event_count = 0
-    chore_count = 0
-
-    # 1. Events Today (Future Only)
-    all_events_alert = db.get_all_events()
-    for ev in all_events_alert:
-        try:
-            if ev['date'] == today_str:
-                # Check time conditions
-                is_future_event = False
-                if not ev['time']: is_future_event = True # All day
-                elif ev['time'] > current_time_str: is_future_event = True
-                
-                if is_future_event:
-                    time_part = f" ב-{ev['time']}" if ev['time'] else ""
-                    today_alerts.append(f"🎉 אירוע היום: **{ev['title']}**{time_part}")
-                    event_count += 1
-        except: pass
-
-    # 2. Chores Due Today (Active Only)
-    all_chores_alert = db.get_all_chores()
-    for ch in all_chores_alert:
-        try:
-            if not ch['done'] and ch['due_date'] == today_str:
-                 today_alerts.append(f"✅ משימה להיום: **{ch['name']}**")
-                 chore_count += 1
-        except: pass
-
-    if today_alerts:
-        banner_title = []
-        if event_count: banner_title.append(f"{event_count} אירועים נותרו היום")
-        if chore_count: banner_title.append(f"{chore_count} משימות להיום")
-        
-        st.warning(f"🔔 **{' | '.join(banner_title)}**\n\n" + "\n".join([f"- {alert}" for alert in today_alerts]))
-        
-    st.divider()
     urgent_events_count = db.get_urgent_events_count()
     overdue_cat_count = len(overdue_cat_tasks) if overdue_cat_tasks else 0
-
+    
     # --- NAVIGATION CONFIG ---
     TAB_EXPENSES = "expenses"
     TAB_SHOPPING = "shopping"
@@ -588,20 +567,160 @@ def main_app():
         elif key == TAB_CAT: return f"🐱 טיפול ({overdue_cat_count})" if overdue_cat_count else "🐱 טיפול"
         return key
 
-    # Navigation Bar (Persistent)
-    try:
-        current_index = TABS.index(st.session_state.active_tab)
-    except ValueError:
-        current_index = 0
-        st.session_state.active_tab = TABS[0]
+    # --- CLICKABLE LOGO WITH NAVIGATION POPOVER ---
+    with st.popover("🏠\n\nמשק הבית שלנו\n\nטלאור ורומי ❤️", use_container_width=True):
+        st.markdown("### 📂 בחר עמוד")
+        for tab in TABS:
+            if st.button(get_tab_label(tab), key=f"nav_{tab}", use_container_width=True, 
+                        type="primary" if st.session_state.active_tab == tab else "secondary"):
+                st.session_state.active_tab = tab
+                st.rerun()
+        
+        st.divider()
+        st.markdown("#### ⚙️ הגדרות")
+        edit_mode = st.session_state.get('edit_mode', False)
+        if st.button("✏️ מצב עריכה" if not edit_mode else "✅ סיום עריכה", key="edit_mode_toggle", use_container_width=True):
+            st.session_state['edit_mode'] = not edit_mode
+            st.rerun()
 
-    selected_tab = st.radio(
-        "ניווט", TABS, index=current_index, format_func=get_tab_label,
-        horizontal=True, label_visibility="collapsed", key="nav_radio"
-    )
-    st.session_state.active_tab = selected_tab
+    # Show current tab indicator (minimal spacing)
+    st.markdown(f"""
+    <div style="text-align: center; color: #667eea; font-weight: 600; margin: 5px 0; padding: 0;">
+        {get_tab_label(st.session_state.active_tab)}
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.divider()
+    # --- MODAL DIALOG FOR ADDING ITEMS ---
+    @st.dialog("➕ הוסף חדש")
+    def add_item_dialog():
+        active = st.session_state.active_tab
+        
+        if active == TAB_EXPENSES:
+            st.subheader("💰 הוסף הוצאה")
+            amount_str = st.text_input("סכום (₪)", key="dlg_exp_amount", placeholder="הזן סכום...")
+            description = st.text_input("תיאור", key="dlg_exp_desc")
+            col1, col2 = st.columns(2)
+            with col1: payer = st.radio("מי שילם?", ["טלאור", "רומי"], horizontal=True, key="dlg_exp_payer")
+            with col2: split = st.radio("חלוקה", ["שווה בשווה", "מלא עליי", "מלא עליו/ה"], horizontal=True, key="dlg_exp_split")
+            
+            # Convert amount string to float
+            try:
+                amount = float(amount_str) if amount_str else 0.0
+            except ValueError:
+                amount = 0.0
+            
+            if st.button("💾 שמור", type="primary", use_container_width=True):
+                if amount > 0 and description:
+                    t_share, r_share = 0.0, 0.0
+                    if split == "שווה בשווה":
+                        t_share = amount / 2; r_share = amount / 2
+                    elif split == "מלא עליי":
+                        if payer == "טלאור": t_share = amount; r_share = 0
+                        else: r_share = amount; t_share = 0
+                    else:
+                        if payer == "טלאור": t_share = 0; r_share = amount
+                        else: r_share = 0; t_share = amount
+                    db.add_expense(amount, description, payer, split, t_share, r_share)
+                    st.success("נוסף בהצלחה!")
+                    st.rerun()
+                else:
+                    st.warning("נא למלא סכום ותיאור")
+        
+        elif active == TAB_SHOPPING:
+            st.subheader("🛒 הוסף פריט לקניות")
+            new_item = st.text_input("שם הפריט", key="dlg_shop_name")
+            col1, col2 = st.columns(2)
+            with col1: item_qty = st.text_input("כמות", value="1", key="dlg_shop_qty")
+            with col2: item_cat = st.selectbox("קטגוריה", ["🥛 מוצרי חלב", "🥬 ירקות", "🍎 פירות", "🥩 בשר ודגים", "🍞 מאפים", "🧹 ניקיון", "🧴 טיפוח", "🏠 לבית", "🍬 מתוקים", "📦 אחר"], key="dlg_shop_cat")
+            
+            if st.button("💾 שמור", type="primary", use_container_width=True):
+                if new_item:
+                    db.add_shopping_item(new_item, item_cat, item_qty)
+                    st.success(f"נוסף: {new_item}")
+                    st.rerun()
+                else:
+                    st.warning("נא להזין שם פריט")
+        
+        elif active == TAB_CHORES:
+            st.subheader("✅ הוסף משימה")
+            c_name = st.text_input("שם המשימה", key="dlg_chore_name")
+            col1, col2 = st.columns(2)
+            with col1: c_priority = st.selectbox("עדיפות", ["Regular 🔵", "Urgent 🔴"], key="dlg_chore_priority")
+            with col2: c_due_date = st.date_input("תאריך יעד", value=None, key="dlg_chore_date")
+            
+            if st.button("💾 שמור", type="primary", use_container_width=True):
+                if c_name:
+                    due_str = c_due_date.isoformat() if c_due_date else None
+                    db.add_chore(c_name, c_priority, due_str)
+                    st.success("נוסף בהצלחה!")
+                    st.rerun()
+                else:
+                    st.warning("נא להזין שם משימה")
+        
+        elif active == TAB_EVENTS:
+            st.subheader("📅 הוסף אירוע")
+            e_title = st.text_input("שם האירוע", key="dlg_event_title")
+            col1, col2 = st.columns(2)
+            with col1: e_date = st.date_input("תאריך", key="dlg_event_date")
+            with col2: e_time = st.time_input("שעה", key="dlg_event_time")
+            e_desc = st.text_area("פרטים נוספים", key="dlg_event_desc")
+            
+            if st.button("💾 שמור", type="primary", use_container_width=True):
+                if e_title:
+                    db.add_event(e_title, e_date.isoformat(), e_time.strftime("%H:%M"), e_desc)
+                    st.success("נוסף בהצלחה!")
+                    st.rerun()
+                else:
+                    st.warning("נא להזין שם אירוע")
+        
+        elif active == TAB_CAT:
+            st.subheader("🐱 הוסף משימת טיפול בחתול")
+            cat_name = st.text_input("שם המשימה", key="dlg_cat_name")
+            cat_hours = st.number_input("תדירות (שעות)", min_value=1, max_value=168, value=24, key="dlg_cat_hours")
+            
+            if st.button("💾 שמור", type="primary", use_container_width=True):
+                if cat_name:
+                    db.add_cat_task(cat_name, cat_hours)
+                    st.success("נוסף בהצלחה!")
+                    st.rerun()
+                else:
+                    st.warning("נא להזין שם משימה")
+
+    # --- FAB BUTTON ---
+    # Wrap in specific container and use unique selectors
+    st.markdown('<div class="fab-wrapper">', unsafe_allow_html=True)
+    if st.button("➕", key="fab_button", help="הוסף פריט חדש"):
+        add_item_dialog()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Inject CSS targeting only the FAB wrapper
+    st.markdown("""
+    <style>
+        /* Target only the FAB wrapper, not the logo */
+        .fab-wrapper {
+            position: fixed !important;
+            bottom: 25px !important;
+            left: 25px !important;
+            z-index: 99999 !important;
+        }
+        .fab-wrapper button {
+            border-radius: 50% !important;
+            width: 65px !important;
+            height: 65px !important;
+            min-width: 65px !important;
+            font-size: 28px !important;
+            padding: 0 !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+        }
+        .fab-wrapper button:hover {
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4) !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
     # ================== EXPENSES TAB ==================
     if st.session_state.active_tab == TAB_EXPENSES:
@@ -638,38 +757,6 @@ def main_app():
         """
         st.markdown(balance_html, unsafe_allow_html=True)
         
-        with st.expander("➕ הוסף הוצאה חדשה", expanded=False):
-            col1, col2 = st.columns(2)
-            with col1: amount = st.number_input("סכום (₪)", min_value=0.0, step=1.0)
-            with col2: description = st.text_input("תיאור")
-            
-            col3, col4 = st.columns(2)
-            with col3: payer = st.radio("מי שילם?", ["טלאור", "רומי"], horizontal=True, index=0)
-            with col4: split = st.radio("חלוקה", ["שווה בשווה", "מלא עליי", "מלא עליו/ה"], horizontal=True)
-            
-            if st.button("שמור הוצאה", type="primary", use_container_width=True):
-                if amount > 0 and description:
-                    # Calculate Shares
-                    t_share, r_share = 0.0, 0.0
-                    if split == "שווה בשווה":
-                        t_share = amount / 2
-                        r_share = amount / 2
-                    elif split == "מלא עליי":
-                        if payer == "טלאור": 
-                            t_share = amount; r_share = 0
-                        else:
-                            r_share = amount; t_share = 0
-                    else: # Full on Other
-                        if payer == "טלאור":
-                            t_share = 0; r_share = amount
-                        else:
-                            r_share = 0; t_share = amount
-                    
-                    db.add_expense(amount, description, payer, split, t_share, r_share)
-                    st.success("נוסף בהצלחה!")
-                    st.rerun()
-                else:
-                    st.warning("נא למלא סכום ותיאור")
         
         # Recent Expenses List
         st.subheader("פירוט אחרון")
@@ -711,17 +798,6 @@ def main_app():
     elif st.session_state.active_tab == TAB_SHOPPING:
         st.header("רשימת קניות 🛒")
         
-        with st.expander("➕ הוסף פריט חדש", expanded=False):
-            col1, col2 = st.columns([2, 1])
-            with col1: new_item = st.text_input("שם הפריט")
-            with col2: item_qty = st.text_input("כמות", value="1")
-            item_cat = st.selectbox("קטגוריה", ["🥛 מוצרי חלב", "🥬 ירקות", "🍎 פירות", "🥩 בשר ודגים", "🍞 מאפים", "🧹 ניקיון", "🧴 טיפוח", "🏠 לבית", "🍬 מתוקים וחטיפים", "📦 אחר"])
-            
-            if st.button("הוסף פריט", type="primary", use_container_width=True):
-                if new_item:
-                    db.add_shopping_item(new_item, item_cat, item_qty)
-                    st.success(f"נוסף: {new_item}")
-                    st.rerun()
         
         items = db.get_all_shopping_items()
         if not items:
@@ -788,19 +864,6 @@ def main_app():
     elif st.session_state.active_tab == TAB_CHORES:
         st.header("משימות בית ✅")
         
-        with st.expander("➕ הוסף משימה חדשה", expanded=False):
-            c_name = st.text_input("שם המשימה")
-            col1, col2 = st.columns(2)
-            with col1: c_priority = st.selectbox("עדיפות", ["Regular 🔵", "Urgent 🔴"], index=0)
-            with col2: c_due_date = st.date_input("תאריך יעד", value=None)
-            
-            if st.button("הוסף משימה", type="primary", use_container_width=True):
-                if c_name:
-                    due_str = c_due_date.isoformat() if c_due_date else None
-                    db.add_chore(c_name, c_priority, due_str)
-                    st.success("נוסף בהצלחה!")
-                    st.rerun()
-                else: st.warning("נא להזין שם משימה")
         
         chores = db.get_all_chores()
         
